@@ -1,0 +1,9 @@
+archive
+dataset
+
+# jupyrer and pandas cache
+.ipynb_checkpoints
+*.df
+
+# pyenv
+.python-version
