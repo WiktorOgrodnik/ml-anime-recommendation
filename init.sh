@@ -1,3 +1,5 @@
+SHELL_CONFIGURATION=/home/"$USER"/.bashrc
+
 mkdir -p dataset
 
 if [ ! -e dataset/anime-dataset-2023.csv ]; then
@@ -5,12 +7,23 @@ if [ ! -e dataset/anime-dataset-2023.csv ]; then
     exit 1
 fi
 
-# install 
+# install pyenv
 
 if ! command -v pyenv &> /dev/null; then
     echo "Pyenv not detected installing..."
+    rm -rf ~/.pyenv
     curl https://pyenv.run | bash
-    exec "$SHELL"
+    
+    echo "
+# pyenv config
+export PYENV_ROOT=\"\$HOME/.pyenv\"
+[[ -d \$PYENV_ROOT/bin ]] && export PATH=\"\$PYENV_ROOT/bin:\$PATH\"
+
+eval \"\$(pyenv init -)\"
+eval \"\$(pyenv virtualenv-init -)\"" >> $SHELL_CONFIGURATION
+      
+    echo "Source the ~/.bashrc config and run script onece again to complete the setup"
+    exit 0
 fi
 
 pyenv install -s -v 3.11.6
