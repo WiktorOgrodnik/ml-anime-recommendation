@@ -26,9 +26,9 @@ eval \"\$(pyenv virtualenv-init -)\"" >> $SHELL_CONFIGURATION
     exit 0
 fi
 
-pyenv install -s -v 3.11.6
+pyenv install -s 3.11.6
 pyenv virtualenv 3.11.6 ml-anime &> /dev/null
-pyenv local ml-anime
+pyenv local ml-anime || exit
 
 # install jupyter
 
