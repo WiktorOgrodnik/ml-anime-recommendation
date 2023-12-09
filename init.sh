@@ -36,6 +36,11 @@ pip install jupyter
 
 # install dependencies
 
-pip install pandas scipy tqdm matplotlib networkx
+pip install pandas scipy tqdm matplotlib networkx flake8
+
+# install Django
+
+pip install Django
 
 echo "Done"
+
