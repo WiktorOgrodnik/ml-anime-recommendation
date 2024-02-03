@@ -39,7 +39,7 @@ pip install jupyter jupyter-contrib-core jupyter_contrib_nbextensions
 
 # install dependencies
 
-pip install pyarrow pandas scipy tqdm matplotlib networkx flake8
+pip install pyarrow pandas scipy tqdm matplotlib networkx flake8 scikit-learn
 
 # install Flask
 
