@@ -1,5 +1,6 @@
 archive
 dataset
+results
 
 # jupyrer and pandas cache
 .ipynb_checkpoints
