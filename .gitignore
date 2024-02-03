@@ -4,6 +4,7 @@ dataset
 # jupyrer and pandas cache
 .ipynb_checkpoints
 *.df
+*.tsv
 
 # pyenv
 .python-version

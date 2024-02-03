@@ -28,21 +28,33 @@ eval \"\$(pyenv virtualenv-init -)\"" >> $SHELL_CONFIGURATION
     exit 0
 fi
 
-pyenv install -s 3.11.6
-pyenv virtualenv 3.11.6 ml-anime &> /dev/null
+pyenv install -s 3.12.1
+pyenv virtualenv 3.12.1 ml-anime &> /dev/null
 pyenv local ml-anime || exit 1
 
 # install jupyter
 
-pip install jupyter
+pip install jupyter jupyter-contrib-core jupyter_contrib_nbextensions
+# jupyter contrib nbextension install || exit 1
 
 # install dependencies
 
-pip install pandas scipy tqdm matplotlib networkx flake8
+pip install pyarrow pandas scipy tqdm matplotlib networkx flake8
 
 # install Flask
 
-pip install Flask
+# pip install Flask
+
+# Install jupyer vim bindings
+
+# Create required directory in case (optional)
+# mkdir -p $(jupyter --data-dir)/nbextensions
+
+# if [ -e "$(jupyter --data-dir)/nbextensions/vim_binding" ]; then
+  # git clone https://github.com/lambdalisue/jupyter-vim-binding $(jupyter --data-dir)/nbextensions/vim_binding
+# fi
+
+# jupyter nbextension enable vim_binding/vim_binding
 
 echo "Done"
 
