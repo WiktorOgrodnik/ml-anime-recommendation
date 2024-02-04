@@ -1,30 +1,56 @@
-from flask import Flask
-import csv
+from flask import Flask, jsonify
 import pandas as pd
-import numpy as np
-
-two_mode_data = 'dataset/anime-dataset-2023.csv'
-all_data = pd.DataFrame()
+from dataclasses import dataclass, asdict
 
 
-def read_data(file: str):
-    with open(file, newline='') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        return [np.array([i] + list(row))
-                for i, row in
-                enumerate(reader, start=-1)]
+@dataclass
+class Anime:
+    id: int
+    name: str
+    image_url: str
+    genres: str
+    year: int
 
 
-def df_from_array(a):
-    return pd.DataFrame(data=a[1:, 1:], index=a[1:, 0], columns=a[0, 1:])
+# importing data from csv to pandas
+def from_csv(file: str) -> pd.DataFrame:
+    return pd.read_csv(file)
+
+
+pd.options.display.max_colwidth = 300
+
+
+anime_data = 'dataset/anime-dataset-2023.csv'
+anime_df = from_csv(anime_data)
+example_animes = [1, 67, 1000]
+
+
+def pandas_extract_content(row, label):
+    name = row[label].to_string()
+    return name.split("    ")[1]
+
+
+def extract_year(aired):
+    return aired.split(",")[1].split(" ")[1]
+
+
+def get_anime_dict(anime_id: int):
+    anime_row = anime_df[anime_df.anime_id == anime_id] \
+        .filter(items=["anime_id", "Name", "Genres", "Image URL", "Aired"])
+
+    anime = Anime(
+        int(pandas_extract_content(anime_row, "anime_id")),
+        pandas_extract_content(anime_row, "Name"),
+        pandas_extract_content(anime_row, "Image URL"),
+        pandas_extract_content(anime_row, "Genres"),
+        int(extract_year(pandas_extract_content(anime_row, "Aired"))))
+
+    return asdict(anime)
 
 
 def startup():
-
     global all_data
-
-    raw_data = read_data(two_mode_data)
-    all_data = df_from_array(np.array(raw_data))
+    pass
 
 
 class AnimeApp(Flask):
@@ -50,8 +76,17 @@ app = AnimeApp(__name__)
 
 @app.route("/")
 def hello_world():
-    print(all_data.columns)
-    return f"<h1>{all_data.columns}</h1>"
+    return "<h1>Anime data server</h1>"
+
+
+@app.route("/api/Anime/<int:anime_id>")
+def get_anime(anime_id: int):
+    return jsonify(get_anime_dict(anime_id)), 200
+
+
+@app.route("/api/Animes")
+def get_animes_test():
+    return jsonify([get_anime_dict(i) for i in example_animes]), 200
 
 
 if __name__ == '__main__':

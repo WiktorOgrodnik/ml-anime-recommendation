@@ -1,0 +1,71 @@
+/* You can add global styles to this file, and also import other style files */
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background-color: #ffffff; }
+
+div.info-pane {
+  padding: 0px !important;
+  background-color: #e3e3e3;
+  display: block;
+  width: 170px;
+  height: 280px;
+  margin: 10px;
+  border-radius: 4%;
+  transition: all .2s ease-in-out;
+  float: left;
+}
+
+div.info-pane-image {
+  height: 200px;
+}
+
+img.anime-image {
+  height: 100%;
+  width:  100%;
+  object-fit: cover;
+  border-top-right-radius: 4%;
+  border-top-left-radius: 4%;
+}
+
+div.info-pane-details {
+  padding: 10px;
+}
+
+div.info-pane:hover {
+  transform: scale(1.01);
+  background-color: #c3c3c3;
+}
+
+div.info-pane-name {
+  font-weight: bold;
+  font-size: 10pt;
+}
+
+div.info-pane-year {
+  font-size: 9pt;
+  margin-top: 5px;
+}
+
+div.info-pane-genre {
+  font-size: 9pt;
+  font-style: italic;
+}
+
+img.bin-icon {
+  width: 30px;
+  height: 30px;
+  transition: all .2s ease-in-out;
+}
+
+img.bin-icon:hover {
+  transform: scale(1.2);
+}
+
+div.delete-button {
+  transition: all .2s ease-in-out;
+  float: right;
+  margin-left: 10px;
+}
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }

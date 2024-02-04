@@ -1,0 +1,15 @@
+<div class="anime-selection-list">
+
+  <button mat-fab matTooltip="Primary" color="primary" aria-label="Add anime" (click)="addAnime()">
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <div style="clear: both;"></div>
+
+  <div *ngIf="animes$ | async as animes">
+    <div *ngFor="let anime of animes">
+      <app-anime [anime]="anime"></app-anime>
+    </div>
+  </div>
+
+</div>
