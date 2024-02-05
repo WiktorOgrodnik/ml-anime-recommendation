@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { AnimeComponent } from '../anime/anime.component';
 import { AddAnimeButtonComponent } from '../add-anime-button/add-anime-button.component';
+import { ShowRecommendationsButtonComponent } from '../show-recommendations-button/show-recommendations-button.component';
 import { AnimeService } from '../../services/anime.service';
 import { Observable, switchMap } from 'rxjs';
 import { Anime } from '../../models/anime';
@@ -15,6 +16,7 @@ import { tap } from 'rxjs/operators';
   imports: [
     AnimeComponent,
     AddAnimeButtonComponent,
+    ShowRecommendationsButtonComponent,
     CommonModule,
     NgIf,
     NgForOf,
@@ -31,10 +33,10 @@ export class AnimeSelectionListComponent {
   dialog: AddAnimeDialogWrapperComponent | null = null;
 
   constructor(private readonly animeService: AnimeService, public matDialog: MatDialog) {
-    this.needsRefresh$ = this.animeService.needsRefresh$ as Observable<void>;
+    this.needsRefresh$ = this.animeService.selectedNeedsRefresh$ as Observable<void>;
 
     this.animes$ = this.needsRefresh$.pipe(switchMap(() =>
-      this.animeService.getAnimes().pipe(
+      this.animeService.getAnimes("selected").pipe(
         tap(() => {
           if (this.dialog) {
             this.dialog.formSubmitted();
@@ -47,5 +49,9 @@ export class AnimeSelectionListComponent {
   addAnime() {
     this.dialog = this.matDialog.open(AddAnimeDialogWrapperComponent, {}).componentInstance;
     this.dialog.animeAdded.subscribe(result => this.animeService.addAnime(result).subscribe());
+  }
+
+  showRecommendations() {
+    this.animeService.genRecommendations().subscribe();
   }
 }

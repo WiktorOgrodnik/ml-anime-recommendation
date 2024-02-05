@@ -1,0 +1,15 @@
+div.anime-recommendations-list {
+  padding: 20px;
+  width: 45%;
+  float: right;
+}
+
+div.anime-recommendations-list-elements {
+  width: 100%;
+}
+
+mat-progress-spinner.anime-recommendations-spinner {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}

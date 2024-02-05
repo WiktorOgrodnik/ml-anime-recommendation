@@ -1,0 +1,18 @@
+<div class="anime-recommendations-list">
+
+  <div class="anime-recommendations-list-elements">
+    <div *ngIf="animes$ | async as animes; else loading">
+      <div *ngFor="let anime of animes">
+        <app-anime [anime]="anime"></app-anime>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #loading>
+    <mat-progress-spinner class="anime-recommendations-spinner"
+        color="blue"
+        mode="indeterminate"
+    ></mat-progress-spinner>
+  </ng-template>
+
+</div>

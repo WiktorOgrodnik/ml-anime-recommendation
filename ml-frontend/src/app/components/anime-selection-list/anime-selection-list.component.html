@@ -2,12 +2,14 @@
 
   <app-add-anime-button (animeAddedClicked)="addAnime()"></app-add-anime-button>
 
-  <div style="clear: both;"></div>
-
-  <div *ngIf="animes$ | async as animes">
-    <div *ngFor="let anime of animes">
-      <app-anime [anime]="anime"></app-anime>
+  <div class="anime-selection-list-elements">
+    <div *ngIf="animes$ | async as animes">
+      <div *ngFor="let anime of animes">
+        <app-anime [anime]="anime"></app-anime>
+      </div>
     </div>
   </div>
+
+  <app-show-recommendations-button (showRecommendationsClicked)="showRecommendations()" ></app-show-recommendations-button>
 
 </div>

@@ -1,9 +1,12 @@
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import pandas as pd
-import sys
+import time
 import logging
 from dataclasses import dataclass, asdict
+import json
+import numpy as np
+import sklearn.metrics
 
 
 @dataclass
@@ -13,6 +16,12 @@ class Anime:
     image_url: str
     genres: str
     year: int
+
+
+@dataclass
+class OperationResult:
+    id: int
+    message: str
 
 
 # importing data from csv to pandas
@@ -25,7 +34,69 @@ logging.basicConfig(level=logging.DEBUG)
 
 anime_data = 'dataset/anime-dataset-2023.csv'
 anime_df = from_csv(anime_data)
-example_animes = [1, 67, 1000, 242]
+example_animes = []
+recommended_animes = []
+
+
+class AnimeRecomendationLimited:
+    def __init__(self):
+        self.columns = ["user", "anime"]
+        self.rankings = dict()
+
+    def anime_label(self, idx: int) -> str:
+        return f"anime__{idx}"
+
+    def get_artifacts(self, name: str):
+        p = "results/emb__"
+        files = ["labels", "vects_iter"]
+        suf = [".out.entities", ".out.npy"]
+
+        return {f: f"{p}{name}__{name}{suf[idx]}"
+                for idx, f in enumerate(files)}
+
+    def load_artifacts(self):
+        artifacts = self.get_artifacts(self.columns[1])
+        with open(artifacts['labels'], "r") as entities:
+            self.labels = json.load(entities)
+        # Load results to numpy
+        self.vects_iter = np.load(artifacts['vects_iter'])
+
+    def load_rankings(self, idx: int):
+        real_id = self.labels.index(f"anime__{idx}")
+
+        v = self.vects_iter[real_id]
+        dist = sklearn.metrics.pairwise.cosine_similarity(v.reshape(1, -1),
+                                                          self.vects_iter,
+                                                          dense_output=True)
+        ranking = (-dist).argsort()[0]
+
+        self.rankings[self.labels[real_id]] = ranking[:15]
+
+    def add_to_custom_ranking(self, custom_ranking, idx: int):
+        anime_ranking = self.rankings[f"anime__{idx}"]
+
+        for anime in anime_ranking:
+            if anime in custom_ranking:
+                custom_ranking[anime] += 1
+            else:
+                custom_ranking[anime] = 1
+
+    def predict(self, already_watched):
+
+        self.load_artifacts()
+        custom_ranking = dict()
+
+        for idx in already_watched:
+            if f"anime__{idx}" not in self.rankings:
+                self.load_rankings(idx)
+
+            self.add_to_custom_ranking(custom_ranking, idx)
+
+        return dict(sorted(custom_ranking.items(),
+                           reverse=True, key=lambda x: x[1]))
+
+
+recommendations_model = AnimeRecomendationLimited()
 
 
 def pandas_extract_content(row, label):
@@ -34,12 +105,22 @@ def pandas_extract_content(row, label):
 
 
 def extract_year(aired):
-    return aired.split(",")[1].split(" ")[1]
+    try:
+        return aired.split(",")[1].split(" ")[1]
+    except IndexError:
+        return 0
+
+
+def is_anime_available(anime_id):
+    return len(anime_df[anime_df.anime_id == anime_id]) > 0
 
 
 def get_anime_dict(anime_id: int):
     anime_row = anime_df[anime_df.anime_id == anime_id] \
         .filter(items=["anime_id", "Name", "Genres", "Image URL", "Aired"])
+
+    if len(anime_row) == 0:
+        raise Exception("Anime not found!")
 
     anime = Anime(
         int(pandas_extract_content(anime_row, "anime_id")),
@@ -81,7 +162,6 @@ CORS(app)
 @app.before_request
 def handle_preflight():
     if request.method == "OPTIONS":
-        app.logger.info("CORS OPTIONS")
         response = Response()
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST'
@@ -95,26 +175,45 @@ def hello_world():
     return "<h1>Anime data server</h1>"
 
 
+@app.route("/api/generate", methods=['GET'])
+def generate_recommendations():
+    global recommended_animes
+
+    ranking = recommendations_model.predict(example_animes)
+    recommended_animes = [i for i in ranking.keys() if is_anime_available(i)]
+
+    return Response(), 200
+
+
 @app.route("/api/Anime/<int:anime_id>")
 def get_anime(anime_id: int):
     return jsonify(get_anime_dict(anime_id)), 200
 
 
-@app.route("/api/Animes")
-def get_animes_test():
-    app.logger.info("Hello!!!")
+@app.route("/api/Animes/selected")
+def get_animes_selected():
     return jsonify([get_anime_dict(i) for i in example_animes]), 200
+
+
+@app.route("/api/Animes/recommended")
+def get_animes_recommended():
+    return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
 
 
 @app.route("/api/Anime", methods=['POST'])
 def put_anime():
-    app.logger.info("Hello@@@@")
     anime_id = int(request.data)
 
-    example_animes.append(anime_id)
-    print(example_animes, file=sys.stderr)
+    try:
+        get_anime_dict(anime_id)
 
-    return jsonify(get_anime_dict(anime_id)), 200
+        example_animes.append(anime_id)
+        return jsonify(asdict(OperationResult(anime_id, "Ok"))), 200
+    except Exception:
+        app.logger.warn("Anime not found")
+        return jsonify(asdict(
+            OperationResult(anime_id, "Anime not found"))
+                       ), 200
 
 
 if __name__ == '__main__':
