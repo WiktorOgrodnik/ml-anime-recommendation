@@ -1,20 +1,20 @@
 import { Component } from '@angular/core';
 import { AnimeComponent } from '../anime/anime.component';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { AddAnimeButtonComponent } from '../add-anime-button/add-anime-button.component';
 import { AnimeService } from '../../services/anime.service';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 import { Anime } from '../../models/anime';
 import { CommonModule, NgIf, NgForOf, NgFor } from '@angular/common';
+import { AddAnimeDialogWrapperComponent } from '../add-anime-dialog-wrapper/add-anime-dialog-wrapper.component';
+import { MatDialog } from '@angular/material/dialog';
+import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-anime-selection-list',
   standalone: true,
-  imports:
-  [
+  imports: [
     AnimeComponent,
-    MatButtonModule,
-    MatIconModule,
+    AddAnimeButtonComponent,
     CommonModule,
     NgIf,
     NgForOf,
@@ -25,16 +25,27 @@ import { CommonModule, NgIf, NgForOf, NgFor } from '@angular/common';
 })
 export class AnimeSelectionListComponent {
 
-  animes$: Observable<Anime[]>;
+  animes$ : Observable<Anime[]>
+  needsRefresh$: Observable<void>;
 
-  constructor(private readonly animeService: AnimeService) {
-    this.animes$ = this.animeService.getAnimes();
+  dialog: AddAnimeDialogWrapperComponent | null = null;
+
+  constructor(private readonly animeService: AnimeService, public matDialog: MatDialog) {
+    this.needsRefresh$ = this.animeService.needsRefresh$ as Observable<void>;
+
+    this.animes$ = this.needsRefresh$.pipe(switchMap(() =>
+      this.animeService.getAnimes().pipe(
+        tap(() => {
+          if (this.dialog) {
+            this.dialog.formSubmitted();
+            this.dialog = null;
+          }
+        })
+      )));
   }
 
   addAnime() {
-    console.log("Clicked")
-  }
-
-  updateItems() {
+    this.dialog = this.matDialog.open(AddAnimeDialogWrapperComponent, {}).componentInstance;
+    this.dialog.animeAdded.subscribe(result => this.animeService.addAnime(result).subscribe());
   }
 }

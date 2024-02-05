@@ -1,8 +1,6 @@
 <div class="anime-selection-list">
 
-  <button mat-fab matTooltip="Primary" color="primary" aria-label="Add anime" (click)="addAnime()">
-    <mat-icon>add</mat-icon>
-  </button>
+  <app-add-anime-button (animeAddedClicked)="addAnime()"></app-add-anime-button>
 
   <div style="clear: both;"></div>
 

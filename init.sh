@@ -43,7 +43,7 @@ pip install pyarrow pandas scipy tqdm matplotlib networkx flake8
 
 # install Flask
 
-pip install Flask
+pip install Flask flask-cors
 
 # Install jupyer vim bindings
 

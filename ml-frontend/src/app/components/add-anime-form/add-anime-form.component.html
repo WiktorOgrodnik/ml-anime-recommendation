@@ -1,0 +1,19 @@
+<form [formGroup]="animeForm" (ngSubmit)="onFormSubmit()">
+  <div>{{localTitle}}</div>
+  <ng-container *ngIf="!this.isLoading; else spinner">
+    <h2>Add anime</h2>
+    <mat-form-field appearance="fill">
+      <mat-label>Anime id</mat-label>
+      <input type="number" matInput formControlName="anime_id" />
+    </mat-form-field>
+
+    <button mat-button color="primary">Add anime</button>
+  </ng-container>
+</form>
+
+<ng-template #spinner>
+  <mat-progress-spinner
+    color="blue"
+    mode="indeterminate"
+  ></mat-progress-spinner>
+</ng-template>

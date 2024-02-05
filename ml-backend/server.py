@@ -1,5 +1,8 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, Response
+from flask_cors import CORS
 import pandas as pd
+import sys
+import logging
 from dataclasses import dataclass, asdict
 
 
@@ -18,11 +21,11 @@ def from_csv(file: str) -> pd.DataFrame:
 
 
 pd.options.display.max_colwidth = 300
-
+logging.basicConfig(level=logging.DEBUG)
 
 anime_data = 'dataset/anime-dataset-2023.csv'
 anime_df = from_csv(anime_data)
-example_animes = [1, 67, 1000]
+example_animes = [1, 67, 1000, 242]
 
 
 def pandas_extract_content(row, label):
@@ -72,6 +75,19 @@ class AnimeApp(Flask):
 
 
 app = AnimeApp(__name__)
+CORS(app)
+
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        app.logger.info("CORS OPTIONS")
+        response = Response()
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+
+        return response
 
 
 @app.route("/")
@@ -86,7 +102,19 @@ def get_anime(anime_id: int):
 
 @app.route("/api/Animes")
 def get_animes_test():
+    app.logger.info("Hello!!!")
     return jsonify([get_anime_dict(i) for i in example_animes]), 200
+
+
+@app.route("/api/Anime", methods=['POST'])
+def put_anime():
+    app.logger.info("Hello@@@@")
+    anime_id = int(request.data)
+
+    example_animes.append(anime_id)
+    print(example_animes, file=sys.stderr)
+
+    return jsonify(get_anime_dict(anime_id)), 200
 
 
 if __name__ == '__main__':
