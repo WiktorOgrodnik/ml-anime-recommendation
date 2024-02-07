@@ -46,16 +46,16 @@ class AnimeRecomendationLimited:
     def anime_label(self, idx: int) -> str:
         return f"anime__{idx}"
 
-    def get_artifacts(self, name: str):
+    def get_artifacts(self):
         p = "results/emb__"
         files = ["labels", "vects_iter"]
         suf = [".out.entities", ".out.npy"]
 
-        return {f: f"{p}{name}__{name}{suf[idx]}"
+        return {f: f"{p}{self.columns[0]}__{self.columns[1]}{suf[idx]}"
                 for idx, f in enumerate(files)}
 
     def load_artifacts(self):
-        artifacts = self.get_artifacts(self.columns[1])
+        artifacts = self.get_artifacts()
         with open(artifacts['labels'], "r") as entities:
             self.labels = json.load(entities)
         # Load results to numpy

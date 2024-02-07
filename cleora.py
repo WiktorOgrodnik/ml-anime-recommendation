@@ -3,11 +3,11 @@ import subprocess
 
 class CleoraExecutor:
 
-    def __init__(self, dimensions=32, iter=16):
+    def __init__(self, dimensions=6, iter=1):
         self.dimensions = dimensions
         self.iterations = iter
         self.columns = ["user", "anime"]
-        self.tsv_filename = "data3.tsv"
+        self.tsv_filename = "data2.tsv"
 
     def cleora_exe(self, cleora_exe="cleora"):
 
@@ -21,7 +21,7 @@ class CleoraExecutor:
                    "-o", "results",
                    "-e", "0",
                    self.tsv_filename]
-        subprocess.run(command, check=True, stderr=subprocess.DEVNULL)
+        subprocess.run(command, check=True)
 
 
 if __name__ == "__main__":
