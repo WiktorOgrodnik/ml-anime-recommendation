@@ -5,6 +5,9 @@ import { MatIcon } from '@angular/material/icon';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { NgIf } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 
 @Component({
   selector: 'app-add-anime-form',
@@ -16,6 +19,9 @@ import { NgIf } from '@angular/common';
     MatProgressSpinner,
     NgIf,
     ReactiveFormsModule,
+    MatButtonModule,
+    MatInputModule,
+    MatFormFieldModule,
   ],
   templateUrl: './add-anime-form.component.html',
   styleUrl: './add-anime-form.component.scss'

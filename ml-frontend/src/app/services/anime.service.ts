@@ -30,7 +30,13 @@ export class AnimeService {
   }
 
   addAnime(anime_id: number): Observable<number> {
-    return this.httpClient.post<number>(`${environment.apiUrl}api/Anime`, anime_id).pipe(
+    return this.httpClient.post<number>(`${environment.apiUrl}api/Anime/${anime_id}`, {}).pipe(
+      tap(() => this._selectedNeedsRefresh$.next())
+    )
+  }
+
+  deleteAnime(anime_id: number): Observable<unknown> {
+    return this.httpClient.delete<number>(`${environment.apiUrl}api/Anime/${anime_id}`).pipe(
       tap(() => this._selectedNeedsRefresh$.next())
     )
   }

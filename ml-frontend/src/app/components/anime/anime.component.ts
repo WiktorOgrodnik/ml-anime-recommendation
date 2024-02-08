@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { Anime } from '../../models/anime';
 
 @Component({
@@ -10,4 +10,11 @@ import { Anime } from '../../models/anime';
 })
 export class AnimeComponent {
   @Input() anime!: Anime;
+  @Input() delete_visible!: boolean;
+
+  @Output() animeDeleteClicked = new EventEmitter<number>();
+
+  deleteClicked() {
+    this.animeDeleteClicked.emit(this.anime.id);
+  }
 }

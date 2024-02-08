@@ -32,6 +32,10 @@ export class AnimeSelectionListComponent {
 
   dialog: AddAnimeDialogWrapperComponent | null = null;
 
+  addAnimeButtonLabel = "Add anime";
+  addCategoryButtonLabel = "Add Category";
+  addTypeButtonLabel = "Add type";
+
   constructor(private readonly animeService: AnimeService, public matDialog: MatDialog) {
     this.needsRefresh$ = this.animeService.selectedNeedsRefresh$ as Observable<void>;
 
@@ -49,6 +53,18 @@ export class AnimeSelectionListComponent {
   addAnime() {
     this.dialog = this.matDialog.open(AddAnimeDialogWrapperComponent, {}).componentInstance;
     this.dialog.animeAdded.subscribe(result => this.animeService.addAnime(result).subscribe());
+  }
+
+  deleteAnime(id: number) {
+    this.animeService.deleteAnime(id).subscribe();
+  }
+
+  addCategory() {
+    alert("Add category clicked");
+  }
+
+  addType() {
+    alert("Add type clicked");
   }
 
   showRecommendations() {

@@ -1,0 +1,18 @@
+h2 {
+  display: block;
+  padding: 20px;
+}
+
+form {
+  width: 400px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  flex-direction: column;
+}
+
+button.accept-form-button {
+  margin-bottom: 10px;
+}

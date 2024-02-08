@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, Output, EventEmitter, Input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -10,11 +10,13 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './add-anime-button.component.scss'
 })
 export class AddAnimeButtonComponent {
+
+  @Input() label! : string;
   @Output() animeAddedClicked = new EventEmitter<void>();
 
   constructor () {}
 
-  addAnime() {
+  clicked() {
     this.animeAddedClicked.emit();
   }
 }

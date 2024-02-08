@@ -4,6 +4,13 @@ div.anime-selection-list {
   float: left;
 }
 
+div.anime-selection-list-button {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+}
+
 div.anime-selection-list-elements {
   width: 100%;
 }

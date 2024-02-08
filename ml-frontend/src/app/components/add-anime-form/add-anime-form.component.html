@@ -2,12 +2,15 @@
   <div>{{localTitle}}</div>
   <ng-container *ngIf="!this.isLoading; else spinner">
     <h2>Add anime</h2>
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="fill" floatLabel="always">
       <mat-label>Anime id</mat-label>
-      <input type="number" matInput formControlName="anime_id" />
+      <input matInput type="number" formControlName="anime_id" />
     </mat-form-field>
 
-    <button mat-button color="primary">Add anime</button>
+    <button
+      mat-raised-button
+      color="primary"
+      class="accept-form-button"> Add anime </button>
   </ng-container>
 </form>
 

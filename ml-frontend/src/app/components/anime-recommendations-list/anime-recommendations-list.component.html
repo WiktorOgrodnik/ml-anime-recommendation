@@ -3,7 +3,7 @@
   <div class="anime-recommendations-list-elements">
     <div *ngIf="animes$ | async as animes; else loading">
       <div *ngFor="let anime of animes">
-        <app-anime [anime]="anime"></app-anime>
+        <app-anime [anime]="anime" [delete_visible]="false"></app-anime>
       </div>
     </div>
   </div>

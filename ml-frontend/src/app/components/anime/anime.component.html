@@ -1,4 +1,9 @@
 <div class="info-pane">
+
+  @if (this.delete_visible) {
+    <div class="info-pane-x" (click)="deleteClicked()">X</div>
+  }
+
   <div class="info-pane-image">
     <img src={{anime.image_url}} alt="anime icon" class="anime-image">
   </div>

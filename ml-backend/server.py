@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 anime_data = 'dataset/anime-dataset-2023.csv'
 anime_df = from_csv(anime_data)
-example_animes = []
+example_animes = set()
 recommended_animes = []
 
 
@@ -162,7 +162,7 @@ def handle_preflight():
     if request.method == "OPTIONS":
         response = Response()
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
 
         return response
@@ -183,9 +183,34 @@ def generate_recommendations():
     return Response(), 200
 
 
-@app.route("/api/Anime/<int:anime_id>")
+@app.route("/api/Anime/<int:anime_id>", methods=['GET'])
 def get_anime(anime_id: int):
     return jsonify(get_anime_dict(anime_id)), 200
+
+
+@app.route("/api/Anime/<int:anime_id>", methods=['DELETE'])
+def delete_anime(anime_id: int):
+    if anime_id in example_animes:
+        example_animes.remove(anime_id)
+        return jsonify(asdict(
+            OperationResult(anime_id, "Ok"))), 200
+    else:
+        return jsonify(asdict(
+            OperationResult(anime_id, "Anime not selected"))), 200
+
+
+@app.route("/api/Anime/<int:anime_id>", methods=['POST'])
+def put_anime(anime_id: int):
+    try:
+        get_anime_dict(anime_id)
+        
+        example_animes.add(anime_id)
+        return jsonify(asdict(OperationResult(anime_id, "Ok"))), 200
+    except Exception:
+        app.logger.warn("Anime not found")
+        return jsonify(asdict(
+            OperationResult(anime_id, "Anime not found"))
+                       ), 200
 
 
 @app.route("/api/Animes/selected")
@@ -196,22 +221,6 @@ def get_animes_selected():
 @app.route("/api/Animes/recommended")
 def get_animes_recommended():
     return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
-
-
-@app.route("/api/Anime", methods=['POST'])
-def put_anime():
-    anime_id = int(request.data)
-
-    try:
-        get_anime_dict(anime_id)
-
-        example_animes.append(anime_id)
-        return jsonify(asdict(OperationResult(anime_id, "Ok"))), 200
-    except Exception:
-        app.logger.warn("Anime not found")
-        return jsonify(asdict(
-            OperationResult(anime_id, "Anime not found"))
-                       ), 200
 
 
 if __name__ == '__main__':

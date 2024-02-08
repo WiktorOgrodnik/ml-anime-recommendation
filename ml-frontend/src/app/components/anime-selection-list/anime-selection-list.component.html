@@ -1,11 +1,15 @@
 <div class="anime-selection-list">
 
-  <app-add-anime-button (animeAddedClicked)="addAnime()"></app-add-anime-button>
+  <div class="anime-selection-list-button">
+    <app-add-anime-button [label]="this.addAnimeButtonLabel" (animeAddedClicked)="addAnime()"></app-add-anime-button>
+    <app-add-anime-button [label]="this.addCategoryButtonLabel" (animeAddedClicked)="addCategory()"></app-add-anime-button>
+    <app-add-anime-button [label]="this.addTypeButtonLabel" (animeAddedClicked)="addType()"></app-add-anime-button>
+  </div>
 
   <div class="anime-selection-list-elements">
     <div *ngIf="animes$ | async as animes">
       <div *ngFor="let anime of animes">
-        <app-anime [anime]="anime"></app-anime>
+        <app-anime (animeDeleteClicked)="deleteAnime($event)" [anime]="anime" [delete_visible]="true"></app-anime>
       </div>
     </div>
   </div>
