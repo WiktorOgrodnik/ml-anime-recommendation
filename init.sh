@@ -34,7 +34,7 @@ pyenv local ml-anime || exit 1
 
 # install jupyter
 
-pip install jupyter jupyter-contrib-core jupyter_contrib_nbextensions
+pip install jupyter jupyter-contrib-core jupyter_contrib_nbextensions nbstripout
 # jupyter contrib nbextension install || exit 1
 
 # install dependencies
