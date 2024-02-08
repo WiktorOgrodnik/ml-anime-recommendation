@@ -223,5 +223,13 @@ def get_animes_recommended():
     return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
 
 
+@app.route("/api/search/<string:phrase>", methods=['GET'])
+def search_animes(phrase: str):
+
+    # test data
+    test_data = [1, 20, 21]
+
+    return jsonify([get_anime_dict(i) for i in test_data]), 200
+
 if __name__ == '__main__':
     app.run()

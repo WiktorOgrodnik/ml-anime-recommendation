@@ -46,4 +46,8 @@ export class AnimeService {
       tap(() => this._recommendedNeedsRefresh$.next())
     )
   }
+
+  search(phrase: string): Observable<Anime[]> {
+    return this.httpClient.get<Anime[]>(`${environment.apiUrl}api/search/${phrase}`);
+  }
 }
