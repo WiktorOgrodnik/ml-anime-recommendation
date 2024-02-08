@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import pandas as pd
-import time
 import logging
 from dataclasses import dataclass, asdict
 import json
@@ -38,13 +37,11 @@ example_animes = []
 recommended_animes = []
 
 
-class AnimeRecomendationLimited:
+class RatingGenerator:
     def __init__(self):
+        self.users_count = None
         self.columns = ["user", "anime"]
         self.rankings = dict()
-
-    def anime_label(self, idx: int) -> str:
-        return f"anime__{idx}"
 
     def get_artifacts(self):
         p = "results/emb__"
@@ -57,12 +54,12 @@ class AnimeRecomendationLimited:
     def load_artifacts(self):
         artifacts = self.get_artifacts()
         with open(artifacts['labels'], "r") as entities:
-            self.labels = json.load(entities)
+            self.labels = np.array([int(i) for i in json.load(entities)])
         # Load results to numpy
         self.vects_iter = np.load(artifacts['vects_iter'])
 
     def load_rankings(self, idx: int):
-        real_id = self.labels.index(f"anime__{idx}")
+        real_id = np.where(self.labels == idx)[0][0]
 
         v = self.vects_iter[real_id]
         dist = sklearn.metrics.pairwise.cosine_similarity(v.reshape(1, -1),
@@ -70,10 +67,10 @@ class AnimeRecomendationLimited:
                                                           dense_output=True)
         ranking = (-dist).argsort()[0]
 
-        self.rankings[self.labels[real_id]] = ranking[:15]
+        self.rankings[self.labels[real_id]] = self.labels[ranking[:15]]
 
     def add_to_custom_ranking(self, custom_ranking, idx: int):
-        anime_ranking = self.rankings[f"anime__{idx}"]
+        anime_ranking = self.rankings[idx]
 
         for anime in anime_ranking:
             if anime in custom_ranking:
@@ -87,16 +84,17 @@ class AnimeRecomendationLimited:
         custom_ranking = dict()
 
         for idx in already_watched:
-            if f"anime__{idx}" not in self.rankings:
+            if idx not in self.rankings:
                 self.load_rankings(idx)
 
             self.add_to_custom_ranking(custom_ranking, idx)
 
         return dict(sorted(custom_ranking.items(),
-                           reverse=True, key=lambda x: x[1]))
+                           reverse=True,
+                           key=lambda x: x[1]))
 
 
-recommendations_model = AnimeRecomendationLimited()
+recommendations_model = RatingGenerator()
 
 
 def pandas_extract_content(row, label):
