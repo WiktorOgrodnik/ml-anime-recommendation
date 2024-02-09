@@ -47,7 +47,7 @@ class AnimeRecomendation:
                 case 8 | 9: return 2
                 case 10: return 3
                 case _: return 0
-    
+
         def agg_fun(anime: str, rating: int) -> str:
             return " ".join([str(anime)] * adj_mult(rating))
 
@@ -70,7 +70,7 @@ class AnimeRecomendation:
     def choose(self, nousers: int):
         self.grouped_df = self.grouped_df.sample(n=nousers)
 
-    def cleora_train(self, cleora_exe="cleora", dimensions = 32, iter = 16):
+    def cleora_train(self, cleora_exe="./cleora-exe", dimensions=32, iter=16):
         if self.tsv_filename is None:
             raise RuntimeError("TSV filename not yet created")
         if not os.access(cleora_exe, os.X_OK) and shutil.which(cleora_exe) is None:
@@ -94,13 +94,13 @@ def load_users(filepath):
 
 
 if __name__ == "__main__":
-    
+
     users_df = load_users(USERS_CSV)
-    
+
     model = AnimeRecomendation()
     model.fit(users_df, lines=4000000, rating_threshold=RATING_THRESHOLD)
     model.choose(10000)
 
     model.save_to_tsv(TSV_FILENAME)
 
-    model.cleora_train(dimensions = 32, iter = 16)
+    model.cleora_train(dimensions=32, iter=16)

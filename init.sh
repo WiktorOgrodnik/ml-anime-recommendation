@@ -9,6 +9,11 @@ if [ ! -e dataset/anime-dataset-2023.csv ]; then
     exit 1
 fi
 
+if [ ! -e dataset/user-filtered.csv ]; then
+    echo "Download dataset/user-filtered.csv first"
+    exit 1
+fi
+
 # install pyenv
 
 if ! command -v pyenv &> /dev/null; then
@@ -39,7 +44,7 @@ pip install jupyter jupyter-contrib-core jupyter_contrib_nbextensions
 
 # install dependencies
 
-pip install pyarrow pandas scipy tqdm matplotlib networkx flake8
+pip install pyarrow pandas scipy scikit-learn tqdm matplotlib networkx flake8
 
 # install Flask
 
@@ -56,5 +61,21 @@ pip install Flask flask-cors
 
 # jupyter nbextension enable vim_binding/vim_binding
 
-echo "Done"
+# Install cleora
 
+if [ ! -d cleora ]; then
+
+  git clone https://github.com/BaseModelAI/cleora.git
+  cd cleora && cargo build --release && cd ..
+
+  ln -s $(pwd)/cleora/target/release/cleora ./cleora-exe
+
+fi
+
+# Get npm packages
+
+cd ml-frontend && npm install && cd ..
+
+echo "Done"
+echo "Next steps: you will need global angular cli package"
+echo "\$ sudo npm install -g @angular/cli"
