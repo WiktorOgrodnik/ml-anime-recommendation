@@ -102,11 +102,19 @@ def pandas_extract_content(row, label):
     return name.split("    ")[1]
 
 
+def pandas_tuple_id(ptuple):
+    return ptuple[0]
+
+
 def extract_year(aired):
     try:
         return aired.split(",")[1].split(" ")[1]
     except IndexError:
         return 0
+
+
+def english_name_exists(anime_row):
+    return pandas_extract_content(anime_row, "English name") != "UNKNOWN"
 
 
 def is_anime_available(anime_id):
@@ -115,20 +123,33 @@ def is_anime_available(anime_id):
 
 def get_anime_dict(anime_id: int):
     anime_row = anime_df[anime_df.anime_id == anime_id] \
-        .filter(items=["anime_id", "Name", "Genres", "Image URL", "Aired"])
+        .filter(items=["anime_id", "Name", "English name", "Genres", "Image URL", "Aired"])
 
     if len(anime_row) == 0:
         raise Exception("Anime not found!")
 
     anime = Anime(
         int(pandas_extract_content(anime_row, "anime_id")),
-        pandas_extract_content(anime_row, "Name"),
+        pandas_extract_content(anime_row, "English name") if english_name_exists(anime_row) else pandas_extract_content(anime_row, "Name"),
         pandas_extract_content(anime_row, "Image URL"),
         pandas_extract_content(anime_row, "Genres"),
         int(extract_year(pandas_extract_content(anime_row, "Aired"))))
 
     return asdict(anime)
 
+
+def search_str(s: str, search: str) -> bool:
+    return search.lower() in s.lower()
+
+def find_by_name(name: str):
+    mask = anime_df.filter(items=["Name", "English name"]) \
+                   .apply(lambda x: x.map(lambda s: search_str(s, name)))
+    return anime_df.loc[mask.any(axis=1)]
+
+
+def search_animes_engine(phrase: str):
+    return [pandas_tuple_id(i) for i in find_by_name(phrase).itertuples(index=False)
+            if pandas_tuple_id(i) not in example_animes][:5]
 
 def startup():
     global all_data
@@ -222,6 +243,12 @@ def get_animes_selected():
 def get_animes_recommended():
     return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
 
+
+@app.route("/api/search/<string:phrase>", methods=['GET'])
+def search_animes(phrase: str):
+    proposed_animes = search_animes_engine(phrase)
+
+    return jsonify([get_anime_dict(i) for i in proposed_animes]), 200
 
 if __name__ == '__main__':
     app.run()

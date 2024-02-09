@@ -1,13 +1,16 @@
-import { Component, Output, EventEmitter, OnInit } from '@angular/core';
-import { Observable } from 'rxjs';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Component, Output, EventEmitter } from '@angular/core';
+import { Observable, debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs';
+import { FormGroup, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { NgIf } from '@angular/common';
+import { NgIf, NgForOf, CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { AnimeService } from '../../services/anime.service';
+import { Anime } from '../../models/anime';
+import { MatAutocompleteModule, MatOptgroup } from '@angular/material/autocomplete'
 
 @Component({
   selector: 'app-add-anime-form',
@@ -17,33 +20,53 @@ import { MatFormFieldModule } from '@angular/material/form-field';
     MatFormField,
     MatLabel,
     MatProgressSpinner,
+    CommonModule,
     NgIf,
+    NgForOf,
     ReactiveFormsModule,
     MatButtonModule,
     MatInputModule,
     MatFormFieldModule,
+    MatAutocompleteModule,
+    MatOptgroup,
   ],
   templateUrl: './add-anime-form.component.html',
   styleUrl: './add-anime-form.component.scss'
 })
-export class AddAnimeFormComponent implements OnInit {
+export class AddAnimeFormComponent {
 
-  $anime_id!: Observable<number>;
+  filteredOptions$: Observable<Anime[]>
 
   @Output() animeAdded = new EventEmitter<number>();
-  animeForm: FormGroup;
+  animeForm = new FormGroup({
+    anime: new FormControl<string>("", {
+      validators: [Validators.required],
+      nonNullable: true,
+    })
+  })
 
   localTitle = '';
   isLoading = false;
 
-  constructor(private fb: FormBuilder) {
-    this.animeForm = this.fb.group({
-      anime_id: ['', [Validators.required]]
-    })
+  constructor(private readonly animeService: AnimeService) {
+
+    this.filteredOptions$ = this.animeForm.controls.anime.valueChanges
+      .pipe(
+        debounceTime(400),
+        filter(val => val.length >= 3),
+        distinctUntilChanged(),
+        switchMap(val => {
+          return this.filter(val)
+        })
+      )
   }
 
-  ngOnInit(): void {
+  displayFn(anime: Anime) {
+    return anime.name;
+  }
 
+  filter(val: string): Observable<Anime[]> {
+    return this.animeService.search(val);
   }
 
   onFormSubmit(): void {
@@ -53,7 +76,12 @@ export class AddAnimeFormComponent implements OnInit {
     }
 
     this.isLoading = true;
-    const anime_id = this.animeForm.get('anime_id')?.value;
-    this.animeAdded.emit(anime_id);
+    const anime : Anime = this.animeForm.get('anime')?.value as unknown as Anime;
+
+    if (Number.isNaN(anime.id)) {
+      return;
+    }
+
+    this.animeAdded.emit(Number(anime.id));
   }
 }
