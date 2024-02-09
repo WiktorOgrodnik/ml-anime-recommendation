@@ -9,9 +9,9 @@
         placeholder="Pick one"
         aria-label="Number"
         matInput
-        [formControl]="this.animeForm.controls.anime_name"
+        [formControl]="this.animeForm.controls.anime"
         [matAutocomplete]="auto"
-        ngFormControl="anime_name">
+        ngFormControl="anime">
       <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
         <div *ngIf="filteredOptions$ | async as filteredOptions; else spinner">
           <div *ngFor="let anime of filteredOptions">

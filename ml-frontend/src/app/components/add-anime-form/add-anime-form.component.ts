@@ -39,7 +39,7 @@ export class AddAnimeFormComponent {
 
   @Output() animeAdded = new EventEmitter<number>();
   animeForm = new FormGroup({
-    anime_name: new FormControl<Anime>('', {
+    anime: new FormControl<string>("", {
       validators: [Validators.required],
       nonNullable: true,
     })
@@ -50,13 +50,13 @@ export class AddAnimeFormComponent {
 
   constructor(private readonly animeService: AnimeService) {
 
-    this.filteredOptions$ = this.animeForm.controls.anime_name.valueChanges
+    this.filteredOptions$ = this.animeForm.controls.anime.valueChanges
       .pipe(
         debounceTime(400),
-        filter(val => val != null && val.length > 3),
+        filter(val => val.length >= 3),
         distinctUntilChanged(),
         switchMap(val => {
-          return this.filter(val || '')
+          return this.filter(val)
         })
       )
   }
@@ -76,8 +76,12 @@ export class AddAnimeFormComponent {
     }
 
     this.isLoading = true;
-    const anime_id = this.animeForm.get('anime_name')?.value;
+    const anime : Anime = this.animeForm.get('anime')?.value as unknown as Anime;
 
-    this.animeAdded.emit(Number(anime_id));
+    if (Number.isNaN(anime.id)) {
+      return;
+    }
+
+    this.animeAdded.emit(Number(anime.id));
   }
 }
