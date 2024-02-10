@@ -2,13 +2,33 @@ import pandas as pd
 import os
 import shutil
 import subprocess
-
-from typing import Optional
+import argparse
 
 
 USERS_CSV = "dataset/user-filtered.csv"
-RATING_THRESHOLD = 6
-TSV_FILENAME = "data2.tsv"
+DEFAULT_RATING_THRESHOLD = 6
+DEFAULT_TSV_FILENAME = "data2.tsv"
+DEFAULT_LINES = 4000000
+DEFAULT_DIM = 16
+DEFAULT_ITER = 32
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dimensions", type=int, default=DEFAULT_DIM)
+    parser.add_argument("-i", "--iter", type=int, default=DEFAULT_ITER)
+    parser.add_argument("-c", "--choose", type=int)
+    parser.add_argument("-o", "--output", type=str, default=DEFAULT_TSV_FILENAME, help="tsv output path")
+    parser.add_argument("--rating-threshold", type=int, default=DEFAULT_RATING_THRESHOLD)
+    parser.add_argument("--skip-fit", action="store_true")
+    parser.add_argument("--skip-cleora", action="store_true")
+    parser.add_argument("--cleora", type=str, default="./cleora-exe", help="cleora executable path")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-l", "--lines", type=int, default=DEFAULT_LINES, help="process first n lines of user dataset")
+    group.add_argument("--all", action="store_const", const=None, dest="lines", help="process the whole user dataset")
+    args = parser.parse_args()
+    return args
 
 
 class AnimeRecomendation:
@@ -35,11 +55,9 @@ class AnimeRecomendation:
 
     def fit(self,
             users_df,
-            lines: Optional[int] = None,
             rating_threshold: int = 6):
 
-        self.users_df = users_df.head(int(lines)) \
-                        if lines is not None else users_df
+        self.users_df = users_df
 
         def adj_mult(rating: int) -> int:
             match rating:
@@ -53,10 +71,10 @@ class AnimeRecomendation:
 
         self.users_df['id_rating'] = list(zip(self.users_df['anime_id'], self.users_df['rating']))
 
-        self.grouped_df = self.users_df[self.users_df.rating >= rating_threshold]                 \
-            .groupby("user_id")["id_rating"]                                                      \
-            .agg(lambda animes: " ".join([agg_fun(anime, rating) for (anime, rating) in animes])) \
-            .reset_index()
+        self.grouped_df = (self.users_df[self.users_df.rating >= rating_threshold]
+            .groupby("user_id")["id_rating"]
+            .agg(lambda animes: " ".join([agg_fun(anime, rating) for (anime, rating) in animes]))
+            .reset_index())
 
         return self.number_of_users()
 
@@ -74,7 +92,7 @@ class AnimeRecomendation:
         if self.tsv_filename is None:
             raise RuntimeError("TSV filename not yet created")
         if not os.access(cleora_exe, os.X_OK) and shutil.which(cleora_exe) is None:
-            raise RuntimeError("cleora executable not found")
+            raise RuntimeError(f"cleora executable not found: {cleora_exe}")
 
         command = [cleora_exe,
                    "--type", "tsv",
@@ -89,18 +107,25 @@ class AnimeRecomendation:
         subprocess.run(command, check=True)
 
 
-def load_users(filepath):
-    return pd.read_csv(filepath, sep=',')
+def load_users(filepath, line_count: int | None):
+    return pd.read_csv(filepath, sep=',', nrows=line_count)
 
 
 if __name__ == "__main__":
+    args = parse_args()
+    print(f"Generating embeddings with {vars(args)}")
 
-    users_df = load_users(USERS_CSV)
+    users_df = load_users(USERS_CSV, args.lines)
 
     model = AnimeRecomendation()
-    model.fit(users_df, lines=4000000, rating_threshold=RATING_THRESHOLD)
-    model.choose(10000)
+    if args.skip_fit:
+        model.tsv_filename = args.output
+    else:
+        model.fit(users_df, rating_threshold=args.rating_threshold)
+        if args.choose is not None:
+            model.choose(args.choose)
 
-    model.save_to_tsv(TSV_FILENAME)
+        model.save_to_tsv(args.output)
 
-    model.cleora_train(dimensions=32, iter=16)
+    if not args.skip_cleora:
+        model.cleora_train(cleora_exe=args.cleora, dimensions=args.dimensions, iter=args.iter)
