@@ -4,8 +4,6 @@ import shutil
 import subprocess
 import argparse
 
-from typing import Optional
-
 
 USERS_CSV = "dataset/user-filtered.csv"
 DEFAULT_RATING_THRESHOLD = 6
@@ -24,7 +22,7 @@ def parse_args():
     parser.add_argument("--rating-threshold", type=int, default=DEFAULT_RATING_THRESHOLD)
     parser.add_argument("--skip-fit", action="store_true")
     parser.add_argument("--skip-cleora", action="store_true")
-    parser.add_argument("--cleora", type=str, default="./cleora", help="cleora executable path")
+    parser.add_argument("--cleora", type=str, default="./cleora-exe", help="cleora executable path")
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-l", "--lines", type=int, default=DEFAULT_LINES, help="process first n lines of user dataset")
@@ -90,7 +88,7 @@ class AnimeRecomendation:
     def choose(self, nousers: int):
         self.grouped_df = self.grouped_df.sample(n=nousers)
 
-    def cleora_train(self, cleora_exe="./cleora", dimensions=32, iter=16):
+    def cleora_train(self, cleora_exe="./cleora-exe", dimensions=32, iter=16):
         if self.tsv_filename is None:
             raise RuntimeError("TSV filename not yet created")
         if not os.access(cleora_exe, os.X_OK) and shutil.which(cleora_exe) is None:
