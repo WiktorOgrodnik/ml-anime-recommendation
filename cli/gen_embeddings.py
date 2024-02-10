@@ -39,6 +39,7 @@ class AnimeRecomendation:
         self.columns = ['user', 'anime']
         self.grouped_columns = ['user_id', 'anime_id']
         self.tsv_filename = None
+        self.popularity_threshold = 6000
 
     def change_data(self, users_df, animes_df):
         self.users_df = users_df
@@ -62,7 +63,8 @@ class AnimeRecomendation:
             self.users_count = self.users_df.max()['user_id']
         return self.users_count
 
-    def fit(self, rating_threshold=6):
+    def fit(self,
+            rating_threshold=6):
 
         def adj_mult(rating: int) -> int:
             match rating:
@@ -74,6 +76,11 @@ class AnimeRecomendation:
         def agg_fun(anime: str, rating: int) -> str:
             return " ".join([str(anime)] * adj_mult(rating))
 
+        self.animes_df = self.animes_df[(self.animes_df['Popularity'] <= self.popularity_threshold) &
+                                        (self.animes_df['Popularity'] > 0)]
+
+        self.users_df = self.users_df[~self.users_df['anime_id'].isin(self.animes_df['anime_id'])]
+        
         self.users_df = (self.users_df[self.users_df.rating >= rating_threshold]
             .assign(id_rating=lambda x: list(zip(x['anime_id'], x['rating'])))
             .groupby('user_id')['id_rating']
@@ -92,7 +99,7 @@ class AnimeRecomendation:
             .rename(columns={'genre': 'user_id'}))
 
         self.grouped_df = pd.concat([self.users_df, self.animes_df], ignore_index=True, sort=False)
-        
+
         return self.number_of_users()
 
     def save_to_tsv(self, tsv_filename: str):

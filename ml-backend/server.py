@@ -33,6 +33,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 anime_data = 'dataset/anime-dataset-2023.csv'
 anime_df = from_csv(anime_data)
+popularity_threshold = 6000
 example_animes = set()
 recommended_animes = []
 
@@ -65,7 +66,7 @@ class RatingGenerator:
         dist = sklearn.metrics.pairwise.cosine_similarity(v.reshape(1, -1),
                                                           self.vects_iter,
                                                           dense_output=True)
-        ranking = (-dist).argsort()[0]
+        ranking = (-dist[0]).argsort()
 
         self.rankings[self.labels[real_id]] = self.labels[ranking[:15]]
 
@@ -117,12 +118,21 @@ def english_name_exists(anime_row):
     return pandas_extract_content(anime_row, "English name") != "UNKNOWN"
 
 
+def anime_filter(anime_id):
+    anime_df_local = anime_df
+    if anime_id is not None:
+        anime_df_local = anime_df_local[anime_df_local['anime_id'] == anime_id]
+
+    return anime_df_local[(anime_df_local['Popularity'] > 0) &
+                          (anime_df_local['Popularity'] <= popularity_threshold)]
+
+
 def is_anime_available(anime_id):
-    return len(anime_df[anime_df.anime_id == anime_id]) > 0
+    return len(anime_filter(anime_id)) > 0
 
 
 def get_anime_dict(anime_id: int):
-    anime_row = anime_df[anime_df.anime_id == anime_id] \
+    anime_row = anime_filter(anime_id) \
         .filter(items=["anime_id", "Name", "English name", "Genres", "Image URL", "Aired"])
 
     if len(anime_row) == 0:
@@ -141,15 +151,18 @@ def get_anime_dict(anime_id: int):
 def search_str(s: str, search: str) -> bool:
     return search.lower() in s.lower()
 
+
 def find_by_name(name: str):
-    mask = anime_df.filter(items=["Name", "English name"]) \
-                   .apply(lambda x: x.map(lambda s: search_str(s, name)))
-    return anime_df.loc[mask.any(axis=1)]
+    mask = (anime_filter(None)
+        .filter(items=["Name", "English name", "Studios"])
+        .apply(lambda x: x.map(lambda s: search_str(s, name))))
+    return anime_filter(None).loc[mask.any(axis=1)]
 
 
 def search_animes_engine(phrase: str):
     return [pandas_tuple_id(i) for i in find_by_name(phrase).itertuples(index=False)
             if pandas_tuple_id(i) not in example_animes][:5]
+
 
 def startup():
     global all_data
