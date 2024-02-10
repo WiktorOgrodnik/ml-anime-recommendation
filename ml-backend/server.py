@@ -156,7 +156,7 @@ def find_by_name(name: str):
     mask = (anime_filter(None)
         .filter(items=["Name", "English name", "Studios"])
         .apply(lambda x: x.map(lambda s: search_str(s, name))))
-    return anime_filter(None).loc[mask.any(axis=1)]
+    return anime_filter(None).loc[mask.any(axis=1)].sort_values("Popularity")
 
 
 def search_animes_engine(phrase: str):
