@@ -4,10 +4,10 @@ import shutil
 import subprocess
 import argparse
 
-
+ANIME_CSV="dataset/anime-dataset-2023.csv"
 USERS_CSV = "dataset/user-filtered.csv"
 DEFAULT_RATING_THRESHOLD = 6
-DEFAULT_TSV_FILENAME = "data2.tsv"
+DEFAULT_TSV_FILENAME = "data.tsv"
 DEFAULT_LINES = 4000000
 DEFAULT_DIM = 16
 DEFAULT_ITER = 32
@@ -32,49 +32,17 @@ def parse_args():
 
 
 class AnimeRecomendation:
-    def __init__(self):
-        self.users_df = pd.DataFrame()
+    def __init__(self, users_df=pd.DataFrame(), animes_df=pd.DataFrame()):
+        self.users_df = users_df
+        self.animes_df = animes_df
         self.users_count = None
-        self.columns = ["user", "anime"]
-        self.grouped_columns = ["user_id", "id_rating"]
+        self.columns = ['user', 'anime']
+        self.grouped_columns = ['user_id', 'anime_id']
         self.tsv_filename = None
 
-    def number_of_users(self):
-        if self.users_count is None:
-            self.users_count = self.users_df.max()['user_id']
-        return self.users_count
-
-    def save_to_tsv(self, tsv_filename: str):
-        self.tsv_filename = tsv_filename
-        self.grouped_df.to_csv(self.tsv_filename,
-                               index=False,
-                               sep='\t',
-                               columns=self.grouped_columns,
-                               mode='w',
-                               header=False)
-
-    def fit(self,
-            users_df,
-            rating_threshold: int = 6):
-
+    def change_data(self, users_df, animes_df):
         self.users_df = users_df
-
-        def adj_mult(rating: int) -> int:
-            match rating:
-                case 6 | 7: return 1
-                case 8 | 9: return 2
-                case 10: return 3
-                case _: return 0
-
-        def agg_fun(anime: str, rating: int) -> str:
-            return " ".join([str(anime)] * adj_mult(rating))
-
-        self.users_df['id_rating'] = list(zip(self.users_df['anime_id'], self.users_df['rating']))
-
-        self.grouped_df = (self.users_df[self.users_df.rating >= rating_threshold]
-            .groupby("user_id")["id_rating"]
-            .agg(lambda animes: " ".join([agg_fun(anime, rating) for (anime, rating) in animes]))
-            .reset_index())
+        self.animes_df = animes_df
 
         return self.number_of_users()
 
@@ -86,7 +54,55 @@ class AnimeRecomendation:
                                       names=self.grouped_columns)
 
     def choose(self, nousers: int):
-        self.grouped_df = self.grouped_df.sample(n=nousers)
+        if nousers <= self.number_of_users():
+            self.users_df = self.users_df.sample(n=nousers)
+
+    def number_of_users(self):
+        if self.users_count is None:
+            self.users_count = self.users_df.max()['user_id']
+        return self.users_count
+
+    def fit(self, rating_threshold=6):
+
+        def adj_mult(rating: int) -> int:
+            match rating:
+                case 6 | 7: return 1
+                case 8 | 9: return 2
+                case 10: return 3
+                case _: return 0
+
+        def agg_fun(anime: str, rating: int) -> str:
+            return " ".join([str(anime)] * adj_mult(rating))
+
+        self.users_df = (self.users_df[self.users_df.rating >= rating_threshold]
+            .assign(id_rating=lambda x: list(zip(x['anime_id'], x['rating'])))
+            .groupby('user_id')['id_rating']
+            .agg(lambda animes: " ".join([agg_fun(anime, rating) for (anime, rating) in animes]))
+            .reset_index()
+            .rename(columns={'id_rating': 'anime_id'}))
+
+        self.animes_df = (self.animes_df
+            .assign(genre=lambda x: x['Genres'].apply(lambda x: x.split(",")))
+            .filter(items=['anime_id', 'genre'])
+            .explode('genre')
+            .groupby('genre')
+            .agg(lambda genres: " ".join([str(i) for i in genres]))
+            .reset_index()
+            .query('genre != "UNKNOWN"')
+            .rename(columns={'genre': 'user_id'}))
+
+        self.grouped_df = pd.concat([self.users_df, self.animes_df], ignore_index=True, sort=False)
+        
+        return self.number_of_users()
+
+    def save_to_tsv(self, tsv_filename: str):
+        self.tsv_filename = tsv_filename
+        self.grouped_df.to_csv(self.tsv_filename,
+                               index=False,
+                               sep='\t',
+                               columns=self.grouped_columns,
+                               mode='w',
+                               header=False)
 
     def cleora_train(self, cleora_exe="./cleora-exe", dimensions=32, iter=16):
         if self.tsv_filename is None:
@@ -107,7 +123,7 @@ class AnimeRecomendation:
         subprocess.run(command, check=True)
 
 
-def load_users(filepath, line_count: int | None):
+def load_pd(filepath, line_count: int | None):
     return pd.read_csv(filepath, sep=',', nrows=line_count)
 
 
@@ -115,16 +131,17 @@ if __name__ == "__main__":
     args = parse_args()
     print(f"Generating embeddings with {vars(args)}")
 
-    users_df = load_users(USERS_CSV, args.lines)
+    users_df = load_pd(USERS_CSV, args.lines)
+    animes_df = load_pd(ANIME_CSV, None)
 
-    model = AnimeRecomendation()
+    model = AnimeRecomendation(users_df=users_df, animes_df=animes_df)
     if args.skip_fit:
         model.tsv_filename = args.output
     else:
-        model.fit(users_df, rating_threshold=args.rating_threshold)
         if args.choose is not None:
             model.choose(args.choose)
 
+        model.fit(rating_threshold=args.rating_threshold)
         model.save_to_tsv(args.output)
 
     if not args.skip_cleora:
