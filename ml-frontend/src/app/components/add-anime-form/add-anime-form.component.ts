@@ -78,7 +78,7 @@ export class AddAnimeFormComponent {
     this.isLoading = true;
     const anime : Anime = this.animeForm.get('anime')?.value as unknown as Anime;
 
-    if (Number.isNaN(anime.id)) {
+    if (anime.id == undefined) {
       return;
     }
 

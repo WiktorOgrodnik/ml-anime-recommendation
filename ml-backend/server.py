@@ -45,7 +45,7 @@ class RatingGenerator:
         self.columns = ["user", "anime"]
         self.rankings = dict()
 
-    def get_artifacts(self):
+    def get_artifacts(self) -> Dict[str, str]:
         p = "results/emb__"
         files = ["labels", "vects_iter"]
         suf = [".out.entities", ".out.npy"]
@@ -53,14 +53,14 @@ class RatingGenerator:
         return {f: f"{p}{self.columns[0]}__{self.columns[1]}{suf[idx]}"
                 for idx, f in enumerate(files)}
 
-    def load_artifacts(self):
+    def load_artifacts(self) -> None:
         artifacts = self.get_artifacts()
         with open(artifacts['labels'], "r") as entities:
             self.labels = np.array([int(i) for i in json.load(entities)])
         # Load results to numpy
         self.vects_iter = np.load(artifacts['vects_iter'])
 
-    def load_rankings(self, idx: int):
+    def load_rankings(self, idx: int) -> None:
         real_id = np.where(self.labels == idx)[0][0]
 
         v = self.vects_iter[real_id]
@@ -71,7 +71,7 @@ class RatingGenerator:
 
         self.rankings[self.labels[real_id]] = self.labels[ranking[:15]]
 
-    def add_to_custom_ranking(self, custom_ranking, idx: int):
+    def add_to_custom_ranking(self, custom_ranking: Dict[int, int], idx: int) -> None:
         anime_ranking = self.rankings[idx]
 
         for anime in anime_ranking:
@@ -80,18 +80,22 @@ class RatingGenerator:
             else:
                 custom_ranking[anime] = 1
 
-    def predict(self, already_watched):
+    def predict(self, already_watched: list[int]):
 
         self.load_artifacts()
-        custom_ranking = dict()
+        custom_ranking: Dict[int, int] = dict()
 
         for idx in already_watched:
             if idx not in self.rankings:
                 self.load_rankings(idx)
 
             self.add_to_custom_ranking(custom_ranking, idx)
+        
+        recommended = \
+            {id: custom_ranking[id] for id in custom_ranking.keys()
+             if id not in already_watched}
 
-        return dict(sorted(custom_ranking.items(),
+        return dict(sorted(recommended.items(),
                            reverse=True,
                            key=lambda x: x[1]))
 

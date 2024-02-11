@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, combineLatest, of } from 'rxjs';
-import { Anime, AnimeImpl } from '../models/anime'
+import { BehaviorSubject, NEVER, Observable, combineLatest, of } from 'rxjs';
+import { Anime } from '../models/anime'
 import { environment } from '../../environments/environment.development';
 import { catchError, tap } from 'rxjs/operators'
 
@@ -30,7 +30,7 @@ export class AnimeService {
     return this.httpClient.get<Anime>(`${environment.apiUrl}api/Anime/${id}`).pipe(
       catchError(error => {
         console.error(`Error fetching anime: ${error}`);
-        return of(new AnimeImpl(""));
+        return NEVER;
       }));
     }
 
