@@ -44,6 +44,16 @@ class RatingGenerator:
         self.users_count = None
         self.columns = ["user", "anime"]
         self.rankings = dict()
+        self.anime_by_genre = self.get_anime_by_genre()
+
+    def get_anime_by_genre(self):
+        anime_df = pd.read_csv(ANIME_CSV)
+        return (anime_df
+            .assign(genre=lambda x: x['Genres'].apply(lambda x: list(map(str.strip, x.split(",")))))
+            .filter(items=['anime_id', 'genre'])
+            .explode('genre')
+            .groupby('genre')
+            .agg(list))
 
     def get_artifacts(self) -> Dict[str, str]:
         p = "results/emb__"
@@ -54,6 +64,13 @@ class RatingGenerator:
                             for idx, f in enumerate(files)},
                 'genres': {f: f"{p}genre__anime{suf[idx]}"
                             for idx, f in enumerate(files)}}
+
+    def get_dist_to_genre(self, genre: str):
+            dists = []
+            for anime_id in self.labels:
+                dists.append(anime_id in self.anime_by_genre.loc[genre]['anime_id'])
+
+            return np.array(dists).astype(float)
 
     def load_artifacts(self) -> None:
         artifacts = self.get_artifacts()
@@ -76,20 +93,25 @@ class RatingGenerator:
         assert np.all(self.labels == glabels)
 
 
-    def load_rankings(self, idx: int) -> None:
+    def load_rankings(self, idx: int, preffered_genres: list[str]):
         real_id = np.where(self.labels == idx)[0][0]
 
         uv = self.vects_iter[real_id]
         udist = sklearn.metrics.pairwise.cosine_similarity(uv.reshape(1, -1),
-                                                          self.vects_iter,
-                                                          dense_output=True)
+                                                          self.vects_iter)
 
         gv = self.gvects_iter[real_id]
         gdist = sklearn.metrics.pairwise.cosine_similarity(gv.reshape(1, -1),
-                                                           self.gvects_iter,
-                                                           dense_output=True)
+                                                           self.gvects_iter)
 
-        dist = 0.9 * udist[0] + 0.1 * gdist[0]
+        if len(preffered_genres) == 0:
+            dists_to_preffered_genres = udist[0]
+        else:
+            dists_to_preffered_genres = np.mean(
+                [self.get_dist_to_genre(genre) for genre in preffered_genres],
+                axis=0)
+
+        dist = 0.88 * udist[0] + 0.1 * gdist[0] + 0.02 * dists_to_preffered_genres
 
         ranking = (-dist).argsort()
 
@@ -104,17 +126,17 @@ class RatingGenerator:
             else:
                 custom_ranking[anime] = 1
 
-    def predict(self, already_watched: list[int]):
+    def predict(self, already_watched: list[int], preffered_genres: list[str] = []):
 
         self.load_artifacts()
         custom_ranking: Dict[int, int] = dict()
 
         for idx in already_watched:
             if idx not in self.rankings:
-                self.load_rankings(idx)
+                self.load_rankings(idx, preffered_genres)
 
             self.add_to_custom_ranking(custom_ranking, idx)
-        
+
         recommended = \
             {id: custom_ranking[id] for id in custom_ranking.keys()
              if id not in already_watched}
