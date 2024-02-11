@@ -73,6 +73,7 @@ export class AnimeService {
   }
 
   search(phrase: string): Observable<Anime[]> {
-    return this.httpClient.get<Anime[]>(`${environment.apiUrl}api/search/${phrase}`);
+    return this.httpClient.post<Anime[]>(`${environment.apiUrl}api/search/${phrase}`,
+      Object.values(this._selectedAnimes).map(behaviorSubject => behaviorSubject.getValue()));
   }
 }

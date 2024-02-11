@@ -7,6 +7,7 @@ import json
 import numpy as np
 import sklearn.metrics
 
+from typing import Dict, Any
 
 @dataclass
 class Anime:
@@ -23,6 +24,9 @@ class OperationResult:
     message: str
 
 
+POPULARITY_THRESHOLD = 6000
+ANIME_CSV = 'dataset/anime-dataset-2023.csv'
+
 # importing data from csv to pandas
 def from_csv(file: str) -> pd.DataFrame:
     return pd.read_csv(file)
@@ -31,11 +35,8 @@ def from_csv(file: str) -> pd.DataFrame:
 pd.options.display.max_colwidth = 300
 logging.basicConfig(level=logging.DEBUG)
 
-anime_data = 'dataset/anime-dataset-2023.csv'
-anime_df = from_csv(anime_data)
-popularity_threshold = 6000
-example_animes = set()
-recommended_animes = []
+
+anime_df = from_csv(ANIME_CSV)
 
 
 class RatingGenerator:
@@ -118,22 +119,23 @@ def english_name_exists(anime_row):
     return pandas_extract_content(anime_row, "English name") != "UNKNOWN"
 
 
-def anime_filter(anime_id):
+def anime_filter(anime_id: int | None) -> pd.DataFrame:
     anime_df_local = anime_df
     if anime_id is not None:
         anime_df_local = anime_df_local[anime_df_local['anime_id'] == anime_id]
 
     return anime_df_local[(anime_df_local['Popularity'] > 0) &
-                          (anime_df_local['Popularity'] <= popularity_threshold)]
+                          (anime_df_local['Popularity'] <= POPULARITY_THRESHOLD)] # type: ignore
 
 
-def is_anime_available(anime_id):
+def is_anime_available(anime_id: int) -> bool:
     return len(anime_filter(anime_id)) > 0
 
 
-def get_anime_dict(anime_id: int):
-    anime_row = anime_filter(anime_id) \
-        .filter(items=["anime_id", "Name", "English name", "Genres", "Image URL", "Aired"])
+def get_anime_dict(anime_id: int) -> Dict[str, Any]:
+    anime_row: pd.DataFrame = anime_filter(anime_id)
+
+    anime_row = anime_row.filter(items=["anime_id", "Name", "English name", "Genres", "Image URL", "Aired"])
 
     if len(anime_row) == 0:
         raise Exception("Anime not found!")
@@ -152,16 +154,16 @@ def search_str(s: str, search: str) -> bool:
     return search.lower() in s.lower()
 
 
-def find_by_name(name: str):
+def find_by_name(name: str) -> pd.DataFrame:
     mask = (anime_filter(None)
         .filter(items=["Name", "English name", "Studios"])
         .apply(lambda x: x.map(lambda s: search_str(s, name))))
     return anime_filter(None).loc[mask.any(axis=1)].sort_values("Popularity")
 
 
-def search_animes_engine(phrase: str):
+def search_animes_engine(phrase: str, selected_animes: list[int]) -> list[int]:
     return [pandas_tuple_id(i) for i in find_by_name(phrase).itertuples(index=False)
-            if pandas_tuple_id(i) not in example_animes][:5]
+            if pandas_tuple_id(i) not in selected_animes][:5]
 
 
 def startup():
@@ -210,9 +212,9 @@ def hello_world():
 @app.route("/api/generate", methods=['POST'])
 def generate_recommendations():
 
-    print(request.json)
+    data: list[Dict[str, Any]] = request.json # type: ignore
+    selected_animes = [anime['id'] for anime in data]
 
-    selected_animes = [anime['id'] for anime in request.json]
     ranking = recommendations_model.predict(selected_animes)
     recommended_animes = [i for i in ranking.keys() if is_anime_available(i)]
     
@@ -224,44 +226,13 @@ def get_anime(anime_id: int):
     return jsonify(get_anime_dict(anime_id)), 200
 
 
-@app.route("/api/Anime/<int:anime_id>", methods=['DELETE'])
-def delete_anime(anime_id: int):
-    if anime_id in example_animes:
-        example_animes.remove(anime_id)
-        return jsonify(asdict(
-            OperationResult(anime_id, "Ok"))), 200
-    else:
-        return jsonify(asdict(
-            OperationResult(anime_id, "Anime not selected"))), 200
-
-
-@app.route("/api/Anime/<int:anime_id>", methods=['POST'])
-def put_anime(anime_id: int):
-    try:
-        get_anime_dict(anime_id)
-        
-        example_animes.add(anime_id)
-        return jsonify(asdict(OperationResult(anime_id, "Ok"))), 200
-    except Exception:
-        app.logger.warn("Anime not found")
-        return jsonify(asdict(
-            OperationResult(anime_id, "Anime not found"))
-                       ), 200
-
-
-@app.route("/api/Animes/selected")
-def get_animes_selected():
-    return jsonify([get_anime_dict(i) for i in example_animes]), 200
-
-
-@app.route("/api/Animes/recommended")
-def get_animes_recommended():
-    return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
-
-
-@app.route("/api/search/<string:phrase>", methods=['GET'])
+@app.route("/api/search/<string:phrase>", methods=['POST'])
 def search_animes(phrase: str):
-    proposed_animes = search_animes_engine(phrase)
+
+    data: list[Dict[str, Any]] = request.json # type: ignore
+    selected_animes = [anime['id'] for anime in data]
+
+    proposed_animes = search_animes_engine(phrase, selected_animes)
 
     return jsonify([get_anime_dict(i) for i in proposed_animes]), 200
 
