@@ -17,6 +17,10 @@ class Anime:
     genres: str
     year: int
 
+@dataclass
+class Genre:
+    id: int
+    name: str
 
 @dataclass
 class OperationResult:
@@ -38,6 +42,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 anime_df = from_csv(ANIME_CSV)
 
+genre_df = pd.read_csv("animes.tsv", sep="\t", names=["name", "animes"])['name'].reset_index().rename(columns={'index': 'genre_id'})
 
 class RatingGenerator:
     def __init__(self):
@@ -55,7 +60,7 @@ class RatingGenerator:
             .groupby('genre')
             .agg(list))
 
-    def get_artifacts(self) -> Dict[str, str]:
+    def get_artifacts(self) -> Dict[str, Dict[str, str]]:
         p = "results/emb__"
         files = ["labels", "vects_iter"]
         suf = [".out.entities", ".out.npy"]
@@ -168,6 +173,12 @@ def extract_year(aired):
 def english_name_exists(anime_row):
     return pandas_extract_content(anime_row, "English name") != "UNKNOWN"
 
+def genre_filter(genre_id: int | None) -> pd.DataFrame:
+    genre_df_local = genre_df
+    if genre_id is not None:
+        genre_df_local = genre_df_local[genre_df_local['genre_id'] == genre_id]
+
+    return genre_df_local
 
 def anime_filter(anime_id: int | None) -> pd.DataFrame:
     anime_df_local = anime_df
@@ -199,22 +210,40 @@ def get_anime_dict(anime_id: int) -> Dict[str, Any]:
 
     return asdict(anime)
 
+def get_genre_dict(genre_id: int) -> Dict[str, Any]:
+    genre_row: pd.DataFrame = genre_filter(genre_id)
+
+    if len(genre_row) == 0:
+        raise Exception("Genre not found!")
+
+    genre = Genre(
+        int(pandas_extract_content(genre_row, "genre_id")),
+        pandas_extract_content(genre_row, "name"))
+
+    return asdict(genre)
 
 def search_str(s: str, search: str) -> bool:
     return search.lower() in s.lower()
 
-
-def find_by_name(name: str) -> pd.DataFrame:
+def find_anime_by_name(name: str) -> pd.DataFrame:
     mask = (anime_filter(None)
         .filter(items=["Name", "English name", "Studios"])
         .apply(lambda x: x.map(lambda s: search_str(s, name))))
     return anime_filter(None).loc[mask.any(axis=1)].sort_values("Popularity")
 
+def find_genre_by_name(name: str) -> pd.DataFrame:
+    mask = (genre_filter(None)
+        .filter(items=["name"])
+        .apply(lambda x: x.map(lambda s: search_str(s, name))))
+    return genre_filter(None).loc[mask.any(axis=1)]
 
 def search_animes_engine(phrase: str, selected_animes: list[int]) -> list[int]:
-    return [pandas_tuple_id(i) for i in find_by_name(phrase).itertuples(index=False)
+    return [pandas_tuple_id(i) for i in find_anime_by_name(phrase).itertuples(index=False)
             if pandas_tuple_id(i) not in selected_animes][:5]
 
+def search_genres_engine(phrase: str, selected_genres: list[int]) -> list[int]:
+    return [pandas_tuple_id(i) for i in find_genre_by_name(phrase).itertuples(index=False)
+            if pandas_tuple_id(i) not in selected_genres][:5]
 
 def startup():
     global all_data
@@ -262,10 +291,12 @@ def hello_world():
 @app.route("/api/generate", methods=['POST'])
 def generate_recommendations():
 
-    data: list[Dict[str, Any]] = request.json # type: ignore
-    selected_animes = [anime['id'] for anime in data]
+    data: Dict[str, list[Dict[str, Any]]] = request.json # type: ignore
 
-    ranking = RatingGenerator().predict(selected_animes)
+    selected_animes = [anime['id'] for anime in data['animes']]
+    selected_genres = [genre['name'] for genre in data['genres']]
+
+    ranking = RatingGenerator().predict(selected_animes, selected_genres)
     recommended_animes = [i for i in ranking.keys() if is_anime_available(i)]
 
     return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
@@ -276,7 +307,7 @@ def get_anime(anime_id: int):
     return jsonify(get_anime_dict(anime_id)), 200
 
 
-@app.route("/api/search/<string:phrase>", methods=['POST'])
+@app.route("/api/search/anime/<string:phrase>", methods=['POST'])
 def search_animes(phrase: str):
 
     data: list[Dict[str, Any]] = request.json # type: ignore
@@ -285,6 +316,20 @@ def search_animes(phrase: str):
     proposed_animes = search_animes_engine(phrase, selected_animes)
 
     return jsonify([get_anime_dict(i) for i in proposed_animes]), 200
+
+@app.route("/api/Genre/<int:genre_id>", methods=['GET'])
+def get_genre(genre_id: int):
+    return jsonify(get_genre_dict(genre_id)), 200
+
+
+@app.route("/api/search/genre/<string:phrase>", methods=['POST'])
+def search_genres(phrase: str):
+    data: list[Dict[str, Any]] = request.json # type: ignore
+    selected_genres = [anime['id'] for anime in data]
+
+    proposed_genres = search_genres_engine(phrase, selected_genres)
+
+    return jsonify([get_genre_dict(i) for i in proposed_genres]), 200
 
 if __name__ == '__main__':
     app.run()

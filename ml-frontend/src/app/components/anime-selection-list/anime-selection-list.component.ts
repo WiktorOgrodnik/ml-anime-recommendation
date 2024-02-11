@@ -6,14 +6,17 @@ import { AnimeService } from '../../services/anime.service';
 import { Observable, switchMap } from 'rxjs';
 import { Anime } from '../../models/anime';
 import { CommonModule, NgIf, NgForOf, NgFor } from '@angular/common';
-import { AddAnimeDialogWrapperComponent } from '../add-anime-dialog-wrapper/add-anime-dialog-wrapper.component';
+import { AddAnimeDialogWrapperComponent, AddGenreDialogWrapperComponent } from '../add-anime-dialog-wrapper/add-anime-dialog-wrapper.component';
 import { MatDialog } from '@angular/material/dialog';
 import { tap } from 'rxjs/operators';
+import { Genre } from '../../models/genre';
+import { GenreComponent } from '../genre/genre.component';
 
 @Component({
   selector: 'app-anime-selection-list',
   standalone: true,
   imports: [
+    GenreComponent,
     AnimeComponent,
     AddAnimeButtonComponent,
     ShowRecommendationsButtonComponent,
@@ -28,12 +31,14 @@ import { tap } from 'rxjs/operators';
 export class AnimeSelectionListComponent {
 
   animes$ : Observable<Anime[]>
+  genres$ : Observable<Genre[]>
   needsRefresh$: Observable<void>;
 
   dialog: AddAnimeDialogWrapperComponent | null = null;
+  genreDialog: AddGenreDialogWrapperComponent | null = null;
 
   addAnimeButtonLabel = "Add anime";
-  addCategoryButtonLabel = "Add Category";
+  addCategoryButtonLabel = "Add Genre";
   addTypeButtonLabel = "Add type";
 
   constructor(private readonly animeService: AnimeService, public matDialog: MatDialog) {
@@ -48,6 +53,16 @@ export class AnimeSelectionListComponent {
           }
         })
       )));
+
+    this.genres$ = this.needsRefresh$.pipe(switchMap(() =>
+      this.animeService.getGenres().pipe(
+        tap(() => {
+          if (this.genreDialog) {
+            this.genreDialog.formSubmitted();
+            this.genreDialog = null;
+          }
+        })
+      )));
   }
 
   addAnime() {
@@ -59,8 +74,12 @@ export class AnimeSelectionListComponent {
     this.animeService.deleteAnime(anime_id).subscribe();
   }
 
+  deleteGenre(anime_id: number) {
+      this.animeService.deleteGenre(anime_id).subscribe();
+    }
   addCategory() {
-    alert("Add category clicked");
+    this.genreDialog = this.matDialog.open(AddGenreDialogWrapperComponent, {}).componentInstance;
+    this.genreDialog.genreAdded.subscribe(result => this.animeService.addGenre(result).subscribe());
   }
 
   addType() {

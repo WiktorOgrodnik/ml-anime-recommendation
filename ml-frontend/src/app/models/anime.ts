@@ -1,4 +1,7 @@
-export interface Anime {
+import { Item } from "./item";
+
+export interface Anime extends Item {
+  type      : "anime"
   id        : number,
   name      : string,
   year      : number,
@@ -7,7 +10,7 @@ export interface Anime {
 }
 
 export class AnimeImpl implements Anime {
-
+  type : "anime" = "anime";
   id = 0;
   name = "";
   year = 0;
