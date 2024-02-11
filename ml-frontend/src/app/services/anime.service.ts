@@ -1,14 +1,18 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { Anime      } from '../models/anime'
+import { BehaviorSubject, Observable, combineLatest, of } from 'rxjs';
+import { Anime, AnimeImpl } from '../models/anime'
 import { environment } from '../../environments/environment.development';
-import { tap } from 'rxjs/operators'
+import { catchError, tap } from 'rxjs/operators'
 
 @Injectable({
   providedIn: 'root'
 })
 export class AnimeService {
+
+  private _selectedAnimes: { [id: number]: BehaviorSubject<Anime> } = {};
+  private _recommendedAnimes: { [id: number]: BehaviorSubject<Anime> } = {};
+
   private _selectedNeedsRefresh$ = new BehaviorSubject<void>(0 as unknown as void);
   get selectedNeedsRefresh$() {
     return this._selectedNeedsRefresh$;
@@ -22,29 +26,50 @@ export class AnimeService {
   constructor(private readonly httpClient: HttpClient) { }
 
   getAnime(id: number): Observable<Anime> {
-    return this.httpClient.get<Anime>(`${environment.apiUrl}api/Anime/${id}`);
+
+    return this.httpClient.get<Anime>(`${environment.apiUrl}api/Anime/${id}`).pipe(
+      catchError(error => {
+        console.error(`Error fetching anime: ${error}`);
+        return of(new AnimeImpl(""));
+      }));
+    }
+
+  getAnimeCount(set: { [id: number]: BehaviorSubject<Anime> }): number {
+    return Object.keys(set).length;
+  }
+
+  getAnimeSet(set: { [id: number]: BehaviorSubject<Anime> }): Observable<Anime[]> {
+    if (this.getAnimeCount(set) == 0) return of([])
+    return combineLatest(Object.values(set).map(behaviorSubject => behaviorSubject.asObservable()));
   }
 
   getAnimes(suite: string): Observable<Anime[]> {
-    return this.httpClient.get<Anime[]>(`${environment.apiUrl}api/Animes/${suite}`);
+    if (suite == "selected") return this.getAnimeSet(this._selectedAnimes);
+    else if (suite == "recommended") return this.getAnimeSet(this._recommendedAnimes);
+    return of([])
   }
 
-  addAnime(anime_id: number): Observable<number> {
-    return this.httpClient.post<number>(`${environment.apiUrl}api/Anime/${anime_id}`, {}).pipe(
-      tap(() => this._selectedNeedsRefresh$.next())
-    )
+  addAnime(id: number): Observable<Anime> {
+    return this.getAnime(id).pipe(
+      tap(anime => this._selectedAnimes[id] = new BehaviorSubject<Anime>(anime)),
+      tap(() => this.selectedNeedsRefresh$.next())
+    );
   }
 
-  deleteAnime(anime_id: number): Observable<unknown> {
-    return this.httpClient.delete<number>(`${environment.apiUrl}api/Anime/${anime_id}`).pipe(
-      tap(() => this._selectedNeedsRefresh$.next())
-    )
+  deleteAnime(id: number): Observable<void> {
+    return of(0 as unknown as void).pipe(
+      tap(() => delete this._selectedAnimes[id]),
+      tap(() => this.selectedNeedsRefresh$.next())
+    );
   }
 
-  genRecommendations(): Observable<unknown> {
-    return this.httpClient.get<void>(`${environment.apiUrl}api/generate`).pipe(
-      tap(() => this._recommendedNeedsRefresh$.next())
-    )
+  genRecommendations(): Observable<Anime[]> {
+    return this.httpClient.post<Anime[]>(`${environment.apiUrl}api/generate`,
+      Object.values(this._selectedAnimes).map(behaviorSubject => behaviorSubject.getValue())).pipe(
+        tap(() => this._recommendedAnimes = {}),
+        tap(animes => animes.forEach(anime => this._recommendedAnimes[anime.id] = new BehaviorSubject<Anime>(anime))),
+        tap(() => this._recommendedNeedsRefresh$.next())
+      );
   }
 
   search(phrase: string): Observable<Anime[]> {

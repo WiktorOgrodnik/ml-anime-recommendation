@@ -207,14 +207,16 @@ def hello_world():
     return "<h1>Anime data server</h1>"
 
 
-@app.route("/api/generate", methods=['GET'])
+@app.route("/api/generate", methods=['POST'])
 def generate_recommendations():
-    global recommended_animes
 
-    ranking = recommendations_model.predict(example_animes)
+    print(request.json)
+
+    selected_animes = [anime['id'] for anime in request.json]
+    ranking = recommendations_model.predict(selected_animes)
     recommended_animes = [i for i in ranking.keys() if is_anime_available(i)]
-
-    return Response(), 200
+    
+    return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
 
 
 @app.route("/api/Anime/<int:anime_id>", methods=['GET'])

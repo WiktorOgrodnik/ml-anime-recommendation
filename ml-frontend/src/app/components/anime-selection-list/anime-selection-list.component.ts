@@ -55,8 +55,8 @@ export class AnimeSelectionListComponent {
     this.dialog.animeAdded.subscribe(result => this.animeService.addAnime(result).subscribe());
   }
 
-  deleteAnime(id: number) {
-    this.animeService.deleteAnime(id).subscribe();
+  deleteAnime(anime_id: number) {
+    this.animeService.deleteAnime(anime_id).subscribe();
   }
 
   addCategory() {
@@ -64,7 +64,7 @@ export class AnimeSelectionListComponent {
   }
 
   addType() {
-    alert("Add type clicked");
+    alert("Add type clicked")
   }
 
   showRecommendations() {
