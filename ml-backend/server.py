@@ -50,26 +50,50 @@ class RatingGenerator:
         files = ["labels", "vects_iter"]
         suf = [".out.entities", ".out.npy"]
 
-        return {f: f"{p}{self.columns[0]}__{self.columns[1]}{suf[idx]}"
-                for idx, f in enumerate(files)}
+        return {'users': {f: f"{p}{self.columns[0]}__{self.columns[1]}{suf[idx]}"
+                            for idx, f in enumerate(files)},
+                'genres': {f: f"{p}genre__anime{suf[idx]}"
+                            for idx, f in enumerate(files)}}
 
     def load_artifacts(self) -> None:
         artifacts = self.get_artifacts()
-        with open(artifacts['labels'], "r") as entities:
-            self.labels = np.array([int(i) for i in json.load(entities)])
+        with open(artifacts['users']['labels'], "r") as entities:
+            self.labels = np.array([int(i) for i in json.load(entities) if i != ''])
+
+        with open(artifacts['genres']['labels'], "r") as entities:
+            glabels = np.array([int(i) for i in json.load(entities)])
+
         # Load results to numpy
-        self.vects_iter = np.load(artifacts['vects_iter'])
+        self.vects_iter = np.load(artifacts['users']['vects_iter'])
+        self.gvects_iter = np.load(artifacts['genres']['vects_iter'])
+
+        self.vects_iter = self.vects_iter[self.labels.argsort()]
+        self.labels.sort()
+
+        self.gvects_iter = self.gvects_iter[glabels.argsort()]
+        glabels.sort()
+
+        assert np.all(self.labels == glabels)
+
 
     def load_rankings(self, idx: int) -> None:
         real_id = np.where(self.labels == idx)[0][0]
 
-        v = self.vects_iter[real_id]
-        dist = sklearn.metrics.pairwise.cosine_similarity(v.reshape(1, -1),
+        uv = self.vects_iter[real_id]
+        udist = sklearn.metrics.pairwise.cosine_similarity(uv.reshape(1, -1),
                                                           self.vects_iter,
                                                           dense_output=True)
-        ranking = (-dist[0]).argsort()
 
-        self.rankings[self.labels[real_id]] = self.labels[ranking[:15]]
+        gv = self.gvects_iter[real_id]
+        gdist = sklearn.metrics.pairwise.cosine_similarity(gv.reshape(1, -1),
+                                                           self.gvects_iter,
+                                                           dense_output=True)
+
+        dist = 0.9 * udist[0] + 0.1 * gdist[0]
+
+        ranking = (-dist).argsort()
+
+        self.rankings[idx] = self.labels[ranking[:15]]
 
     def add_to_custom_ranking(self, custom_ranking: Dict[int, int], idx: int) -> None:
         anime_ranking = self.rankings[idx]
@@ -219,9 +243,9 @@ def generate_recommendations():
     data: list[Dict[str, Any]] = request.json # type: ignore
     selected_animes = [anime['id'] for anime in data]
 
-    ranking = recommendations_model.predict(selected_animes)
+    ranking = RatingGenerator().predict(selected_animes)
     recommended_animes = [i for i in ranking.keys() if is_anime_available(i)]
-    
+
     return jsonify([get_anime_dict(i) for i in recommended_animes]), 200
 
 
