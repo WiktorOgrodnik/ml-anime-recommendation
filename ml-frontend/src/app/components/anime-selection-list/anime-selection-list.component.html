@@ -2,7 +2,8 @@
 
   <div class="anime-selection-list-button">
     <app-add-anime-button [label]="this.addAnimeButtonLabel" (animeAddedClicked)="addAnime()"></app-add-anime-button>
-    <app-add-anime-button [label]="this.addCategoryButtonLabel" (animeAddedClicked)="addCategory()"></app-add-anime-button>
+    <app-add-anime-button [label]="this.addCategoryButtonLabel"
+      (animeAddedClicked)="addCategory()"></app-add-anime-button>
     <app-add-anime-button [label]="this.addTypeButtonLabel" (animeAddedClicked)="addType()"></app-add-anime-button>
   </div>
 
@@ -12,8 +13,14 @@
         <app-anime (animeDeleteClicked)="deleteAnime($event)" [anime]="anime" [delete_visible]="true"></app-anime>
       </div>
     </div>
+    <div *ngIf="genres$ | async as genres">
+      <div *ngFor="let genre of genres">
+        <app-genre (genreDeleteClicked)="deleteGenre($event)" [genre]="genre" [delete_visible]="true"></app-genre>
+      </div>
+    </div>
   </div>
 
-  <app-show-recommendations-button (showRecommendationsClicked)="showRecommendations()" ></app-show-recommendations-button>
+  <app-show-recommendations-button
+    (showRecommendationsClicked)="showRecommendations()"></app-show-recommendations-button>
 
 </div>

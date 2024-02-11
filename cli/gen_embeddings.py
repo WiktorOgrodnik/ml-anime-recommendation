@@ -79,9 +79,11 @@ class AnimeRecomendation:
         self.animes_df = self.animes_df[(self.animes_df['Popularity'] <= self.popularity_threshold) &
                                         (self.animes_df['Popularity'] > 0)]
 
-        self.users_df = self.users_df[~self.users_df['anime_id'].isin(self.animes_df['anime_id'])]
-        
-        self.users_df = (self.users_df[self.users_df.rating >= rating_threshold]
+        self.users_df = self.users_df[self.users_df['rating'] >= rating_threshold]
+        self.users_df = self.users_df[self.users_df['anime_id'].isin(self.animes_df['anime_id'])]
+        self.animes_df = self.animes_df[self.animes_df['anime_id'].isin(self.users_df['anime_id'])]
+
+        self.users_df = (self.users_df
             .assign(id_rating=lambda x: list(zip(x['anime_id'], x['rating'])))
             .groupby('user_id')['id_rating']
             .agg(lambda animes: " ".join([agg_fun(anime, rating) for (anime, rating) in animes]))
@@ -89,22 +91,27 @@ class AnimeRecomendation:
             .rename(columns={'id_rating': 'anime_id'}))
 
         self.animes_df = (self.animes_df
-            .assign(genre=lambda x: x['Genres'].apply(lambda x: x.split(",")))
+            .assign(genre=lambda x: x['Genres'].apply(lambda x: list(map(str.strip, x.split(",")))))
             .filter(items=['anime_id', 'genre'])
             .explode('genre')
             .groupby('genre')
             .agg(lambda genres: " ".join([str(i) for i in genres]))
             .reset_index()
-            .query('genre != "UNKNOWN"')
             .rename(columns={'genre': 'user_id'}))
 
-        self.grouped_df = pd.concat([self.users_df, self.animes_df], ignore_index=True, sort=False)
+        self.grouped_df = self.users_df
 
         return self.number_of_users()
 
     def save_to_tsv(self, tsv_filename: str):
         self.tsv_filename = tsv_filename
         self.grouped_df.to_csv(self.tsv_filename,
+                               index=False,
+                               sep='\t',
+                               columns=self.grouped_columns,
+                               mode='w',
+                               header=False)
+        self.animes_df.to_csv("animes.tsv",
                                index=False,
                                sep='\t',
                                columns=self.grouped_columns,
@@ -127,6 +134,18 @@ class AnimeRecomendation:
                    "-o", "results",
                    "-e", "1",
                    self.tsv_filename]
+        subprocess.run(command, check=True)
+
+        command = [cleora_exe,
+                   "--type", "tsv",
+                   f"--columns=transient::genre complex::anime",
+                   "--dimension", "8",
+                   "--number-of-iterations", str(iter),
+                   "--prepend-field-name", "0",
+                   "-f", "numpy",
+                   "-o", "results",
+                   "-e", "1",
+                   "animes.tsv"]
         subprocess.run(command, check=True)
 
 
